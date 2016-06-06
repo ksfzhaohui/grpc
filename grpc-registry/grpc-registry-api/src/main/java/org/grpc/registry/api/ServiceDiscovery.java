@@ -9,5 +9,5 @@ public interface ServiceDiscovery {
 	 *            服务器名称
 	 * @return 服务地址
 	 */
-	public String discover(String serviceName);
+	public String discover(String serviceName) throws Exception;
 }

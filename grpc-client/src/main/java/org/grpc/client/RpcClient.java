@@ -15,9 +15,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * RPC 客户端（用于发送 RPC 请求）
+ * @author zhaohui
  *
- * @author huangyong
- * @since 1.0.0
  */
 public class RpcClient extends SimpleChannelInboundHandler<RpcResponse> {
 

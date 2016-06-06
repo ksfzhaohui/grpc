@@ -14,9 +14,8 @@ import java.util.UUID;
 
 /**
  * RPC 代理（用于创建 RPC 服务代理）
+ * @author zhaohui
  *
- * @author huangyong
- * @since 1.0.0
  */
 public class RpcProxy {
 

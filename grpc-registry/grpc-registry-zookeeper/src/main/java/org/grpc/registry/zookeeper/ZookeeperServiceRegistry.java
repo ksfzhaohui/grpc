@@ -1,6 +1,10 @@
 package org.grpc.registry.zookeeper;
 
-import org.I0Itec.zkclient.ZkClient;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.data.Stat;
 import org.grpc.registry.api.ServiceRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,37 +14,35 @@ public class ZookeeperServiceRegistry implements ServiceRegistry {
 	private static final Logger LOGGER = LoggerFactory
 			.getLogger(ZookeeperServiceRegistry.class);
 
-	private ZkClient zkClient;
+	private CuratorFramework zkClient;
 
 	public ZookeeperServiceRegistry(String zkAddress) {
-		zkClient = new ZkClient(zkAddress, Constant.ZK_SESSION_TIMEOUT,
-				Constant.ZK_SESSION_TIMEOUT);
+		zkClient = CuratorFrameworkFactory.builder().connectString(zkAddress)
+				.sessionTimeoutMs(Constant.ZK_SESSION_TIMEOUT)
+				.connectionTimeoutMs(Constant.ZK_CONNECTION_TIMEOUT)
+				.retryPolicy(new ExponentialBackoffRetry(1000, 3)).build();
+		zkClient.start();
 		LOGGER.debug("connect zookeeper");
 	}
 
 	@Override
-	public void register(String serviceName, String serviceAddress) {
+	public void register(String serviceName, String serviceAddress)
+			throws Exception {
 		// 创建 registry 节点（持久）
 		String registryPath = Constant.ZK_REGISTRY_PATH;
-		if (!zkClient.exists(registryPath)) {
-			zkClient.createPersistent(registryPath);
-			LOGGER.debug("create registry node: {}", registryPath);
-		}
 		// 创建 service 节点（持久）
 		String servicePath = registryPath + "/" + serviceName;
-		if (!zkClient.exists(servicePath)) {
-			zkClient.createPersistent(servicePath);
-			LOGGER.debug("create service node: {}", servicePath);
+		Stat stat = zkClient.checkExists().forPath(servicePath);
+		if (stat == null) {
+			zkClient.create().creatingParentsIfNeeded()
+					.withMode(CreateMode.PERSISTENT).forPath(servicePath);
 		}
+
 		// 创建 address 节点（临时）
 		String addressPath = servicePath + "/address-";
-		String addressNode = zkClient.createEphemeralSequential(addressPath,
-				serviceAddress);
+		String addressNode = zkClient.create()
+				.withMode(CreateMode.EPHEMERAL_SEQUENTIAL)
+				.forPath(addressPath, serviceAddress.getBytes());
 		LOGGER.debug("create address node: {}", addressNode);
-	}
-
-	@Override
-	public void unregister(String serviceName) {
-
 	}
 }
